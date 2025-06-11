@@ -4,6 +4,8 @@ import json
 from utils.classCreater import JsonToClassConverter
 from errors.errors import TokenError, DnevnikError
 from student.student import Student
+from datetime import datetime
+from pytz import timezone
 
 class Marks:
     def __init__(self, student: Student) -> None:
@@ -31,6 +33,51 @@ class Marks:
                 )
 
             response = await response.json()
+
+            MarksObject = JsonToClassConverter.convert("MarksObject", response)
+            MarksObject.json = response
+
+            return MarksObject
+        
+
+    async def getMarksByDates(self, date_from: str, date_to: str):
+        def convert_date_format(date_str):
+            try:
+                dt = datetime.strptime(date_str, '%Y-%m-%d')
+                return dt.strftime('%d.%m.%Y')
+            except ValueError:
+                raise ValueError(f"Неверный формат даты: {date_str}. Ожидается YYYY-MM-DD")
+
+        date_from_converted = convert_date_format(date_from)
+        date_to_converted = convert_date_format(date_to)
+
+        async with aiohttp.ClientSession() as session:
+            url = (
+                f"https://dnevnik.mos.ru/core/api/marks"
+                f"?created_at_from={date_from_converted}"
+                f"&created_at_to={date_to_converted}"
+                f"&student_profile_id={self.student.profiles[0]['id']}"
+            )
+            response = await session.get(
+                url,
+                headers = {
+                    "Auth-token": self.student.token,
+                    "Profile-Id": str(self.student.profiles[0]['id']),
+                }
+            )
+
+            if response.status != 200:
+                await self.student.refresh()
+                
+                response = await session.get(
+                    url,
+                    headers = {
+                        "Auth-token": self.student.token,
+                        "Profile-Id": str(self.student.profiles[0]['id']),
+                    }
+                )
+
+            response = {"data": await response.json()}
 
             MarksObject = JsonToClassConverter.convert("MarksObject", response)
             MarksObject.json = response
