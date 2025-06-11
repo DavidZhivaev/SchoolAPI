@@ -104,6 +104,38 @@ class Schedule:
             return SchedulePeriods
         
 
+    async def getAllSchedulePeriods(self):
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(
+                f"https://dnevnik.mos.ru/core/api/academic_years"
+            )
+
+            if response.status != 200:
+                await self.student.refresh()
+                
+                response = await session.get(
+                    f"https://dnevnik.mos.ru/core/api/academic_years",
+                )
+
+            response = await response.json()
+
+            if isinstance(response, list):
+                SchedulePeriods = JsonToClassConverter.convert("SchedulePeriods", {"payload": response})
+            else:
+                SchedulePeriods = JsonToClassConverter.convert("SchedulePeriods", response)
+
+            SchedulePeriods.json = response
+
+            return SchedulePeriods
+        
+
+    async def getCurrentPeriod(self):
+        periods = (await self.getAllSchedulePeriods()).payload
+        for period in periods:
+            if period.current_year:
+                return period
+
+
     async def getControlTestDays(self, from_day: str, to_day: str):
         async with aiohttp.ClientSession() as session:
             response = await session.get(
