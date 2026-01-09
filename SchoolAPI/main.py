@@ -10,7 +10,7 @@ from materials.materials import Materials
 
 
 async def test():
-    token = ""
+    token = "eyJhbGciOiJIUzI1..."
     student = Student(token)
 
     day1 = Utils.getNormalDate(2024, 2, 4)
